@@ -71,7 +71,7 @@ Cada ciclo é chamado de **época**:
 | **População** | Tamanho fixo de `6 × n`, limitado entre 100 e 600 | Mais cidades exigem mais variedade genética (espaço de busca de (n−1)!/2 rotas). População grande evita mínimos locais, mas custa mais por época. |
 | **Seleção** | Torneio com k=5, mais elitismo dos 2 melhores | O torneio controla a pressão seletiva e não depende da escala da aptidão. O elitismo mantém as soluções boas até serem superadas. |
 | **Cruzamento** | Ordered Crossover: mantém a primeira metade de um pai e completa com as cidades faltantes na ordem do outro pai. Probabilidade de 90% por par. | Garante permutações válidas. Crossovers de 1 ponto ou uniforme gerariam cidades repetidas ou faltando. |
-| **Mutação** | Swap (troca de duas cidades), com 5% por novo indivíduo | Valor de exemplo da aula. Valores altos perturbam demais e retardam o progresso. Valores baixos demoram a escapar de mínimos locais. |
+| **Mutação** | Inversão de segmento (sorteia duas posições e inverte a ordem das cidades entre elas), com 5% por novo indivíduo | Variante do swap da aula. Altera só 2 conexões da rota (o swap altera 4), então preserva o que já foi construído. A taxa é livre (`--mut-rate`): com inversão, 5% a 60% chegaram ao ótimo do círculo. Taxa 0 estaciona cedo por falta de variedade. |
 | **Parada** | O primeiro entre: máximo de épocas (3000), 300 épocas sem melhora (paciência) ou ótimo conhecido atingido | Combina os critérios vistos em aula: quantidade de épocas, variação do ganho entre épocas e meta de score. |
 
 ### Parâmetros principais da função `algoritmo_genetico`
@@ -107,20 +107,22 @@ Valores obtidos com `--n 30 --seed 42`. Como o AG é estocástico, os números m
 
 | Cenário | Distância final | Observação |
 |---|---|---|
-| Aleatório (30 pontos) | ~617 | Ótimo desconhecido |
-| Círculo (30 pontos) | ~533 | Ótimo = 313,585, gap de ~70% |
+| Aleatório (30 pontos) | ~457 | Ótimo desconhecido; para na época 618 por estagnação |
+| Círculo (30 pontos) | 313,585 | **Ótimo atingido** na época 264 (1,6 s) |
+| Círculo (50 pontos, bônus) | 313,953 | **Ótimo atingido** na época 442 (4,2 s) |
 
-Na exploração da taxa de mutação (`--explorar`, 3 repetições por taxa, cenário aleatório):
+Na exploração da taxa de mutação (`--explorar`, 3 repetições por taxa, cenário aleatório, 600 épocas):
 
-- **Taxa 0:** o algoritmo estaciona logo no início (por volta da época 4, em torno de 1100), pois sem mutação a população perde variedade.
-- **Taxas de 0.05 a 0.3:** resultados entre ~570 e ~660, sem tendência clara.
-- **Taxa 0.6:** os melhores resultados observados, em torno de 540 a 560.
+- **Taxa 0:** o algoritmo estaciona logo no início (época 4, em torno de 1100), pois sem mutação a população perde variedade.
+- **Taxas de 0.05 a 0.6:** resultados entre ~457 e ~510, bem próximos. Taxas baixas e a de 0.6 deram os melhores valores; 0.1 e 0.3 ficaram um pouco piores nas repetições.
+
+### Por que inversão e não swap
+
+Com o swap simples o círculo não chegava ao ótimo: gap de ~70% com 30 pontos, ~90% a 160% com 50 pontos e ~405% com 150 pontos (265 s). O resultado também variava muito com a semente e a taxa. O swap altera quatro conexões da rota de uma vez, um movimento brusco que desmancha trechos já bons. A inversão de segmento altera apenas duas conexões, e com ela o círculo chegou ao ótimo em todos os testes (5 sementes × 4 taxas, 30 pontos), e também com 150 pontos (2398 épocas, ~84 s).
 
 ### Limitações
 
-Com os operadores da aula (swap e crossover da primeira metade), o algoritmo **não chega ao ótimo** no círculo. O swap altera quatro conexões da rota de uma vez, o que é um movimento brusco. O crossover da primeira metade gera pouca variedade. O resultado é uma evolução lenta e a estagnação em soluções medianas. Aumentar `tam_pop`, `max_ger` e `paciencia` melhora um pouco, mas não resolve.
-
-Operadores que mexem em menos conexões por vez (por exemplo, inversão de segmento, ou 2-opt) são alternativas conhecidas para o TSP. Elas ficaram fora deste projeto para manter a implementação fiel ao conteúdo da aula.
+O crossover da primeira metade gera pouca variedade. No cenário aleatório o ótimo é desconhecido, então não dá para medir o gap, e o resultado pode ficar em um ótimo local. Em testes com mais pontos o tempo por época cresce com o tamanho da população.
 
 ## Estrutura do projeto
 
@@ -139,7 +141,7 @@ Principais funções em `tsp_ga.py`:
 | `matriz_distancias`, `comprimentos` | Calculam a aptidão (distância total do ciclo) |
 | `selecao_torneio` | Seleção por torneio |
 | `order_crossover` | Cruzamento (Ordered Crossover) |
-| `mutar` | Mutação por swap |
+| `mutar` | Mutação por inversão de segmento |
 | `algoritmo_genetico` | Laço principal de épocas e critérios de parada |
 | `plota_resultado`, `salva_csv`, `salva_gif`, `tabela_por_epoca` | Acompanhamento das soluções |
 | `explora_mutacao` | Comparação de taxas de mutação |

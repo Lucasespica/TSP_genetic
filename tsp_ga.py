@@ -44,11 +44,17 @@ DECISÕES DE PROJETO
    mantendo a população constante.
 
 5) MUTAÇÃO
-   Swap (troca de posição de duas cidades), como no slide 24, aplicada
-   com probabilidade `mut_rate` por novo indivíduo. Padrão 5%, o exemplo da
-   aula: valores altos perturbam demais e retardam o progresso; valores
-   baixos demoram a escapar de mínimos locais. Use --explorar para comparar
-   taxas.
+   Inversão de segmento: sorteia duas posições i<j e inverte a ordem das
+   cidades entre elas (variante do swap do slide 24: continua sendo uma
+   troca de posições, mas de um trecho inteiro). Altera só 2 conexões da
+   rota, enquanto o swap simples altera 4, então é um passo bem menor e
+   preserva boa parte da rota já construída (é o movimento do 2-opt).
+   Aplicada com probabilidade `mut_rate` por novo indivíduo. Padrão 5%
+   (exemplo da aula): em testes com várias sementes a inversão chegou ao
+   ótimo do círculo com qualquer taxa entre 5% e 60%, então a taxa é uma
+   escolha livre (--mut-rate); com o swap puro o resultado variava muito
+   com a taxa e a semente. Taxa 0 faz a população perder variedade e
+   estacionar. Use --explorar para comparar taxas.
 
 6) POPULAÇÃO E CRITÉRIO DE PARADA
    Tamanho da população cresce com o número de cidades (~ 6*n, limitado entre
@@ -127,9 +133,9 @@ def order_crossover(p1, p2):
 
 
 def mutar(ind, rng):
-    """Swap (slide da aula): troca a posição de duas cidades."""
-    i, j = rng.choice(len(ind), 2, replace=False)
-    ind[i], ind[j] = ind[j], ind[i]
+    """Inversão de segmento: inverte a ordem das cidades entre duas posições."""
+    i, j = sorted(rng.choice(len(ind), 2, replace=False))
+    ind[i:j + 1] = ind[i:j + 1][::-1].copy()
 
 
 # ----------------------------------------------------------------------------
@@ -153,7 +159,7 @@ def algoritmo_genetico(pts, tam_pop=None, max_ger=3000, paciencia=300,
     ultima_melhora, t_conv = 0, 0.0
 
     print(f"\n=== {nome}: n={n} pontos | população={tam_pop} | "
-          f"mutação={mut_rate} (swap) | cruzamento={taxa_cruz} (OX) | elite={elite} ===")
+          f"mutação={mut_rate} (inversão) | cruzamento={taxa_cruz} (OX) | elite={elite} ===")
 
     for ger in range(max_ger + 1):
         comp = comprimentos(pop, D)
